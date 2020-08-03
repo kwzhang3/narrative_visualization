@@ -1,0 +1,141 @@
+<html>
+<h1>Yearly Population Change in the Four Major Regions of the US</h1>
+<p>This visualization shows the numerical population change for each US region year by year between 2010 and 2019.</p>
+<p>The North East Region is represented in blue.</p>
+<p>The Midwest Region is represented in yellow.</p>
+<p>The South Region is represented in red.</p>
+<p>The West Region is represented in green.</p>
+<script src='https://d3js.org/d3.v5.min.js'></script>
+<style> circle {fill: lightblue; stroke: black;} </style>
+<body onload='init()'>
+<svg width=300 height=300>
+</svg>
+<script>
+    async function init() {
+
+        //data = await d3.csv("https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-popchg2010_2019.csv");
+        //had an error so copied dataset to my github repo
+        data = await d3.csv("https://raw.githubusercontent.com/kwzhang3/narrative_visualization/master/nst-est2019-popchg2010_2019.csv");
+
+        //set up svg
+        var svg = d3.select("svg");
+        var margin = 75;
+        var width = 500 + 2*margin;
+        var height = 500 + 2*margin;
+        svg.attr("width", width).attr("height", height);
+
+        //format the data bc javascript read in the data strange due to original data formatting
+        function formatRegionData(line) {
+            regData = [
+                [2010, data[line].NPOPCHG_2010],
+                [2011, data[line].NPOPCHG_2011],
+                [2012, data[line].NPOPCHG_2012],
+                [2013, data[line].NPOPCHG_2013],
+                [2014, data[line].NPOPCHG_2014],
+                [2015, data[line].NPOPCHG_2015],
+                [2016, data[line].NPOPCHG_2016],
+                [2017, data[line].NPOPCHG_2017],
+                [2018, data[line].NPOPCHG_2018],
+                [2019, data[line].NPOPCHG_2019]
+            ];
+            return regData;
+        }
+        neChng = formatRegionData(1);
+        mwChng = formatRegionData(2);
+        sChng = formatRegionData(3);
+        wChng = formatRegionData(4);
+
+        var years = [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019];
+
+        //function to get values only for graphing
+        function popChngList(chngArray) {
+            chngList = [];
+            var index;
+            for (index = 0; index < chngArray.length; index++) {
+                chngList.push(chngArray[index][1]);
+            }
+            return chngList;
+        }
+
+        //compile all data values for y-axis
+        compiledData = popChngList(neChng).concat(popChngList(mwChng).concat(popChngList(sChng).concat(popChngList(wChng))));
+        compiledData.sort();
+
+        //draw the axes
+        var x = d3.scaleBand().domain(years).range([0, width-margin]);
+        var xAxis = d3.axisBottom().scale(x);
+        svg.append("g")
+            .attr("transform", "translate(" + margin + "," + (height-margin) + ")")
+            .call(xAxis);
+
+        var y = d3.scaleBand().domain(compiledData).range([height-margin, 0]);
+        var yAxis = d3.axisLeft().scale(y);
+        svg.append("g")
+            .attr("transform", "translate(" + margin + "," + 0 + ")")
+            .call(yAxis);
+
+        //draw the trendlines
+        function drawTrend(dataSubset, color, numYears) {
+            svg.append("g")
+                .attr("transform", "translate(" + (margin+30) + "," + 5 + ")")
+                .selectAll("line")
+                .data(dataSubset)
+                .enter().append("line")
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 3.5)
+                .attr("x1",function(d, i) { if(i >= numYears){return;}; return x(dataSubset[i][0]); })
+                .attr("y1",function(d, i) { if(i >= numYears){return;}; return y(dataSubset[i][1]); })
+                .attr("x2",function(d, i) { if(i >= numYears){return;} else if(i >= 9){i = 8;}; return x(dataSubset[i+1][0]); })
+                .attr("y2",function(d, i) { if(i >= numYears){return;} else if(i >= 9){i = 8;}; return y(dataSubset[i+1][1]); })
+//rectangle annotation doesn't work because rectangles can't have text?
+//            svg.append("g")
+//                .attr("transform", "translate(" + (margin+30) + "," + 5 + ")")
+//                .selectAll("rect")
+//                .data(dataSubset)
+//                .enter().append("rect")
+//                .attr("fill", color)
+//                .attr("x",function(d, i) { if(i >= numYears){return;} else if(i >= 9){i = 8;}; return x(dataSubset[i+1][0]); })
+//                .attr("y",function(d, i) { if(i >= numYears){return;} else if(i >= 9){i = 8;}; return y(dataSubset[i+1][1]); })
+//                .attr("width",100/3)
+//                .attr("height",100/3)
+        }
+
+        //remove tick lines beforhand because scrolling through button presses clears and redraws all lines
+        svg.selectAll("line").remove();
+
+        //create buttons to control the trendline drawings
+        currYear = 0;
+        var nextButton = document.createElement("BUTTON");
+        nextButton.innerHTML = "Go Forward One Year";
+        document.body.appendChild(nextButton);
+        nextButton.onclick = function() {
+            svg.selectAll("line").remove();
+            if (currYear < 9) {
+                currYear++;
+            }
+            drawTrend(neChng, "blue", currYear);
+            drawTrend(mwChng, "yellow", currYear);
+            drawTrend(sChng, "red", currYear);
+            drawTrend(wChng, "green", currYear);
+        };
+
+        var prevButton = document.createElement("BUTTON");
+        prevButton.innerHTML = "Go Backwards One Year";
+        document.body.appendChild(prevButton);
+        prevButton.onclick = function() {
+            svg.selectAll("line").remove();
+            if (currYear > 0) {
+                currYear--;
+            }
+            drawTrend(neChng, "blue", currYear);
+            drawTrend(mwChng, "yellow", currYear);
+            drawTrend(sChng, "red", currYear);
+            drawTrend(wChng, "green", currYear);
+        };
+
+
+    }
+</script>
+</body>
+</html>
